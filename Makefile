@@ -21,11 +21,11 @@ ATSOPT=$(ATSHOMEQ)/bin/patsopt
 # HX: いずれかの行のコメントを外してください。もしくは読み飛ばすこともできます。
 #
 #ATSCCFLAGS=
-ATSCCFLAGS=-O2
+#ATSCCFLAGS=-O2
 #
 # '-flto' はリンク時最適化を有効にします。ライブラリ関数のインライン展開などを行ないます。
 #
-#ATSCCFLAGS=-O2 -flto
+ATSCCFLAGS=-O2 -flto
 #
 
 ######
