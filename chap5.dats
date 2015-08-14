@@ -14,7 +14,7 @@ fn time2 = lam(x: int): int =<cloref> x * 2
 val f = compose<int, int, int>(time2, plus1)
 
 
-typedef int4 = (int, int, int, int)
+typede int4 = (int, int, int, int)
 val theCoins = (1, 5, 10, 25): int4
 
 fun coin_get(n: int): int =

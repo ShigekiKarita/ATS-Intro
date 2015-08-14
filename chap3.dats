@@ -23,17 +23,40 @@ fun sum1 (n: int): int =
   else 0
 
 
-fn println(x: int): void = begin
-  print(x);
-  print("\n")
-end
+(* closure *)
+fun sum(n: int): int =
+  (* loop :: (int, int) -<cloref1> int *)
+  let fun loop(i: int, res: int):<cloref1> int =
+    if i <= n then loop(i+1, res+i) (* access to n *)
+    else res
+  in loop(1, 0) end
+(* compile into this form *)
+fun sum(n: int): int = let
+  fun loop(n: int, i: int, res: int): int =
+    if i <= n then loop(n, i+1, res+i)
+    else res
+  in loop(n, 1, 0) end
 
 
+fun addx(x: int): int -<cloref1> int =
+  lam y => x + y
+
+
+fun rtfind(f: int -> int): int = let
+  fun loop(f: int -> int, n: int) : int =
+    if f(n) = 0 then n else loop (f, n+1)
+  in loop (f, 0) end
+
+fn f(x: int): int = x * x - x - 110
 
 implement main0 () =
 begin
   print (area_of_ring (2., 1.));
   print ("\n");
-  println (sqrtsum2 @(2, 1));
-  println (sum1 100);
+  println! (sqrtsum2 @(2, 1));
+  println! (sum1 1000);         (* sefmentation fault *)
+  println! (sum  1000000);
+  println! (addx(2)(3));
+  println! (rtfind(f));
+  println! (rtfind(lam x => x*x-x-110));
 end
