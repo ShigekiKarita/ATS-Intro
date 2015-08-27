@@ -39,15 +39,19 @@ fun charlst_length_tco(cs: charlst): int =
   in loop (cs, 0) end
 
 fun charlst_last(cs: charlst): char =
-  case cs of
+  (* case は non-exatstive な match は warning *)
+  (* case+ は error にできる *)
+  (* case- は warning を無視できる *)
+  case- cs of
   | charlst_cons (c, charlst_nil ()) => c
   | charlst_cons (_, cs1) => charlst_last (cs1)
 
-fun charlst_last
-  (cs: charlst): char = let
-  val charlst_cons (c, cs1) = cs in case+ cs1 of
-  | charlst_nil () => c | charlst_cons _ => charlst_last (cs1)
-end // end of [charlst_last]
+fun charlst_last(cs: charlst): char =
+  let val- charlst_cons (c, cs1) = cs in (* val も case と同様 *)
+  case+ cs1 of
+  | charlst_nil () => c
+  | charlst_cons _ => charlst_last (cs1)
+end
 
 
 implement main0 () = (
