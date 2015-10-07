@@ -2,11 +2,11 @@
 #include "share/atspre_staload.hats"
 
 
-staload "libats/ML/SATS/basis.sats"
-staload "libats/ML/SATS/list0.sats"
-staload _(*anon*) = "libats/ML/DATS/list0.dats"
+(* staload "libats/ML/SATS/basis.sats" *)
+(* staload "libats/ML/SATS/list0.sats" *)
+(* staload _(\*anon*\) = "libats/ML/DATS/list0.dats" *)
 
-staload "libc/SATS/stdlib.sats"
+(* staload "libc/SATS/stdlib.sats" *)
 
 (* Chapter 5 *)
 
@@ -49,7 +49,10 @@ fun coin_change(sum: int) = let
 end
 
 val AB = (box("A"), box("B"))
+typedef boxstr = boxed(string)
+val BA = swap_boxed{boxstr}{boxstr}(AB)
 val BA = swap_boxed{...}(AB)
+val BA = swap_boxed(AB)         (* type intered *)
 
 
 datatype list0 (a:t@ype) =
@@ -60,25 +63,131 @@ fun {a:t@ype}
 list0_length (xs: list0 a): int =
   case+ xs of
   | list0_cons (_, xs) => 1 + list0_length<a> (xs)
-  | list0_nil () => 0
+  | list0_nil => 0
 
 datatype option0 (a:t@ype) =
-  | option0_none (a) of ()
+  | option0_none (a)
   | option0_some (a) of a
 
 fun divopt(x: int, y: int) : option0 (int) =
   if y != 0 then option0_some{int}(x/y)
-  else option0_none ()
+  else option0_none
 
-val s = let val d = divopt(1, 2) in case d of
-  | option0_some (a) => 0
-  | option0_none () => 1
-end
+fun {a: t@ype} ok(x: option0 (a)): string =
+  case x of
+  | option0_some (a) => "OK"
+  | option0_none     => "NG"
 
-implement main0 () =
-{
-  val () = println! (x, y) where { val (x, y) = swap<int, double> @(1, 2.0) };
-  val () = println! (unbox(BA.0));
-  val () = println! (coin_change(100));
-  val () = println! (s);
+fun{a: t@ype}{b: t@ype}
+list0_foldl(xs: list0 a, z: b, f: cfun(a, b)): b =
+  case+ xs of
+  | list0_cons (x, xs) => list0_foldl(xs, f(x, z), f)
+  | list0_nil => z
+
+fun{a:t@ype}
+list0_reverse(xs: list0 a): list0 a =
+  list0_foldl<a><list0 a>(xs, list0_nil, lam(x, z) => list0_cons(x, z))
+
+fun{a:t@ype}
+list0_append(xs: list0 a, ys: list0 a) : list0 a =
+  case+ xs of
+  | list0_cons (x, xs) =>
+    list0_cons(x, list0_append (xs, ys))
+  | list0_nil () => ys
+
+fun{a:t@ype}
+list0_reverse_append(xs: list0 a, ys: list0 a) : list0 a =
+  case+ xs of
+  | list0_cons (x, xs) =>
+    list0_reverse_append (xs, list0_cons(x, ys))
+  | list0_nil => ys
+
+fun{a:t@ype}{b:t@ype}
+list0_map(xs: list0 a, f: a -<cloref1> b): list0 b =
+  case+ xs of
+  | list0_cons (x, xs) => list0_cons(f x, list0_map(xs, f))
+  | list0_nil () => list0_nil
+
+fun{a:t@ype}
+list0_foreach(xs: list0 a, f: a -<cloref1> void): void =
+  case+ xs of
+  | list0_cons (x, xs) => {
+    val _ = f x
+    val _ = list0_foreach(xs, f);
+  }
+  | list0_nil => ()
+
+
+fun {a: t@ype}
+list0_print(xs: list0 a, f: a -<cloref1> void): void = {
+    val _ = print!("[")
+    val _ = list0_foreach<a>(xs, f)
+    val _ = println!("]")
+  }
+
+
+(* Merge sort *)
+#define :: list0_cons // writing [::] for list0_cons
+#define cons0 list0_cons // writing [cons0] for list0_cons
+#define nil0 list0_nil // writing [nil0] for list0_nil
+typedef lte (a: t@ype) = (a, a) -> bool
+
+fun {a:t@ype}
+merge(xs: list0 a, ys: list0 a, lte: lte a): list0 a =
+  case+ xs of
+  | x :: xs1 => (
+    case+ ys of
+    | y :: ys1 =>
+      if  x \lte y
+      then x :: merge<a>(xs1, ys, lte)
+      else y :: merge<a>(xs, ys1, lte)
+    | nil0 () => xs
+    )
+  | nil0 () => ys
+
+fun {a: t@ype}
+mergesort(xs: list0 a, lte: lte a): list0 a =
+  let val n = list0_length<a>(xs)
+fun msort
+(
+  xs: list0 a, n: int, lte: lte a
+) : list0 a =
+  if n >= 2 then split (xs, n, lte, n/2, nil0) else xs
+//
+and split
+(
+  xs: list0 a, n: int, lte: lte a, i: int, xsf: list0 a
+) : list0 a =
+  if i > 0 then let
+    val-cons0 (x, xs) = xs
+  in
+    split (xs, n, lte, i-1, cons0{a}(x, xsf))
+  end else let
+    val xsf = list0_reverse<a> (xsf) // make sorting stable!
+    val xsf = msort (xsf, n/2, lte) and xs = msort (xs, n-n/2, lte)
+  in
+    merge<a> (xsf, xs, lte)
+  end // end of [if]
+//
+in
+  msort (xs, n, lte)
+end // end of [mergesort]
+
+
+implement main0 () = {
+  val _ = println! (x, y) where {
+    val (x, y) = swap<int, double> @(1, 2.0)
+  }
+  val _ = println! (unbox(BA.0))
+  val _ = println! (coin_change(100))
+  val _ = println! (ok<int>(divopt(1, 0)))
+
+  val l = 1 :: 3 :: 7 :: nil0// list0_cons(1, list0_cons(3, (list0_cons (2, list0_nil))))
+  val r = list0_reverse_append(l, l)
+  val _ = list0_print<int>(r, lam x => print!(x, ","))
+  val s = merge<int>(l, l, lam (a, b) => a <= b)
+  val _ = list0_print<int>(s, lam x => print!(x, ","))
+
+  val- option0_some(s) = option0_some{int}(1)
+  val _ = println!(s);
 }
