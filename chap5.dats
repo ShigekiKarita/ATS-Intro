@@ -11,7 +11,7 @@
 (* Chapter 5 *)
 
 (* template *)
-typedef cfun(t1: t@ype, t2: t@ype) = t1 -<cloref> t2
+typedef cfun(t1: t@ype, t2: t@ype) = t1 -<cloref1> t2
 
 fun {a, b, c: t@ype}
 compose(f: cfun(a, b), g: cfun(b, c))
@@ -59,6 +59,13 @@ datatype list0 (a:t@ype) =
   | list0_nil (a) of ()
   | list0_cons (a) of (a, list0 a)
 
+#define :: list0_cons // writing [::] for list0_cons
+#define cons0 list0_cons // writing [cons0] for list0_cons
+#define nil0 list0_nil // writing [nil0] for list0_nil
+typedef lte (a: t@ype) = (a, a) -> bool
+
+
+
 fun {a:t@ype}
 list0_length (xs: list0 a): int =
   case+ xs of
@@ -79,39 +86,38 @@ fun {a: t@ype} ok(x: option0 (a)): string =
   | option0_none     => "NG"
 
 fun{a: t@ype}{b: t@ype}
-list0_foldl(xs: list0 a, z: b, f: cfun(a, b)): b =
+list0_foldl(xs: list0 a, z: b, f: (a, b)-<cloref1> b): b =
   case+ xs of
-  | list0_cons (x, xs) => list0_foldl(xs, f(x, z), f)
+  | x::xs => list0_foldl(xs, f(x, z), f)
+  | list0_nil0 => z
+
+fun{a: t@ype}{b: t@ype}
+list0_foldr(xs: list0 a, z: b, f: (a, b)-<cloref1> b): b =
+  case+ xs of
+  | x::xs => f(x, list0_foldr(xs, z, f))
   | list0_nil => z
 
 fun{a:t@ype}
 list0_reverse(xs: list0 a): list0 a =
-  list0_foldl<a><list0 a>(xs, list0_nil, lam(x, z) => list0_cons(x, z))
+  list0_foldl(xs, list0_nil, lam(x, z) => x::z)
 
 fun{a:t@ype}
 list0_append(xs: list0 a, ys: list0 a) : list0 a =
-  case+ xs of
-  | list0_cons (x, xs) =>
-    list0_cons(x, list0_append (xs, ys))
-  | list0_nil () => ys
+  list0_foldr(xs, ys, lam(x, z) => x::z)
 
 fun{a:t@ype}
 list0_reverse_append(xs: list0 a, ys: list0 a) : list0 a =
-  case+ xs of
-  | list0_cons (x, xs) =>
-    list0_reverse_append (xs, list0_cons(x, ys))
-  | list0_nil => ys
+  list0_append(list0_reverse(xs), ys)
 
 fun{a:t@ype}{b:t@ype}
-list0_map(xs: list0 a, f: a -<cloref1> b): list0 b =
-  case+ xs of
-  | list0_cons (x, xs) => list0_cons(f x, list0_map(xs, f))
-  | list0_nil () => list0_nil
+list0_map(xs: list0 a, f: cfun(a, b)): list0 b =
+  list0_foldr(xs, list0_nil, lam(x, z) => f(x)::z)
 
 fun{a:t@ype}
-list0_foreach(xs: list0 a, f: a -<cloref1> void): void =
+list0_foreach(xs: list0 a, f: cfun(a, void)): void =
+  (* list0_foldr(xs, (), lam(x, _) => f(x)) *)
   case+ xs of
-  | list0_cons (x, xs) => {
+  | x :: xs => {
     val _ = f x
     val _ = list0_foreach(xs, f);
   }
@@ -119,19 +125,14 @@ list0_foreach(xs: list0 a, f: a -<cloref1> void): void =
 
 
 fun {a: t@ype}
-list0_print(xs: list0 a, f: a -<cloref1> void): void = {
+list0_print(xs: list0 a, f: cfun(a, void)): void = {
     val _ = print!("[")
-    val _ = list0_foreach<a>(xs, f)
+    val _ = list0_foreach(xs, f)
     val _ = println!("]")
   }
 
 
 (* Merge sort *)
-#define :: list0_cons // writing [::] for list0_cons
-#define cons0 list0_cons // writing [cons0] for list0_cons
-#define nil0 list0_nil // writing [nil0] for list0_nil
-typedef lte (a: t@ype) = (a, a) -> bool
-
 fun {a:t@ype}
 merge(xs: list0 a, ys: list0 a, lte: lte a): list0 a =
   case+ xs of
@@ -148,30 +149,40 @@ merge(xs: list0 a, ys: list0 a, lte: lte a): list0 a =
 fun {a: t@ype}
 mergesort(xs: list0 a, lte: lte a): list0 a =
   let val n = list0_length<a>(xs)
-fun msort
-(
-  xs: list0 a, n: int, lte: lte a
-) : list0 a =
-  if n >= 2 then split (xs, n, lte, n/2, nil0) else xs
-//
-and split
-(
-  xs: list0 a, n: int, lte: lte a, i: int, xsf: list0 a
-) : list0 a =
-  if i > 0 then let
-    val-cons0 (x, xs) = xs
+  fun msort(xs: list0 a, n: int, lte: lte a) : list0 a =
+    if n >= 2
+    then split (xs, n, lte, n/2, nil0)
+    else xs
+  and split(xs: list0 a, n: int, lte: lte a, i: int, xsf: list0 a) : list0 a =
+    if i > 0
+    then
+      let val-cons0 (x, xs) = xs in
+        split (xs, n, lte, i-1, cons0{a}(x, xsf))
+      end
+    else
+      let
+        val xsf = list0_reverse<a> (xsf) // make sorting stable!
+        val xsf = msort (xsf, n/2, lte)
+        and xs = msort (xs, n-n/2, lte)
+      in
+        merge<a> (xsf, xs, lte)
+      end // end of [if]
   in
-    split (xs, n, lte, i-1, cons0{a}(x, xsf))
-  end else let
-    val xsf = list0_reverse<a> (xsf) // make sorting stable!
-    val xsf = msort (xsf, n/2, lte) and xs = msort (xs, n-n/2, lte)
-  in
-    merge<a> (xsf, xs, lte)
-  end // end of [if]
-//
-in
-  msort (xs, n, lte)
-end // end of [mergesort]
+    msort (xs, n, lte)
+  end
+
+staload "libc/SATS/stdlib.sats"
+
+implement fprint_val<int>(out, x) =
+  $extfcall (void, "fprintf", out, "%3.3i", x)
+
+implement fprint_val<list0 int>(out, xs) = {
+  val () = list0_foreach(xs, lam x => $extfcall (void, "fprintf", out, "%3.3i", x))
+  }
+  // list0_print<int>(xs, lam x => print!(x, ","))
+
+//  $extfcall (void, "fprintf", out, "%3.3i", x)
+
 
 
 implement main0 () = {
@@ -187,6 +198,11 @@ implement main0 () = {
   val _ = list0_print<int>(r, lam x => print!(x, ","))
   val s = merge<int>(l, l, lam (a, b) => a <= b)
   val _ = list0_print<int>(s, lam x => print!(x, ","))
+
+
+  val out = stdout_ref
+  val () = fprintln! (out, 1)
+//  val _ = fprintln! (out, s)
 
   val- option0_some(s) = option0_some{int}(1)
   val _ = println!(s);
